@@ -1,6 +1,6 @@
 syntax = "proto3";
 option go_package = "../gen/telegram";
-package main;
+package telegram;
 
 service TelegramService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
@@ -9,32 +9,36 @@ service TelegramService {
   rpc SubscribeMessages(SubscribeMessagesRequest) returns (stream MessageUpdate);
 }
 
+// Создание сэссии
 message CreateSessionRequest {}
 message CreateSessionResponse {
   string session_id = 1;
   string qr_code = 2;
 }
 
+// Удаление сэссии
 message DeleteSessionRequest {
   string session_id = 1;
 }
 message DeleteSessionResponse {}
 
+// Отправка сообщения
 message SendMessageRequest {
   string session_id = 1;
-  string peer = 2;
-  string text = 3;
+  string peer = 2; // кому
+  string text = 3; // текст
 }
 message SendMessageResponse {
   int64 message_id = 1;
 }
 
+// Подписание на получение сообщений
 message SubscribeMessagesRequest {
   string session_id = 1;
 }
 message MessageUpdate {
-  int64 message_id = 1;
-  string from = 2;
-  string text = 3;
-  int64 timestamp = 4;
+  int64 message_id = 1; // id сообщения
+  string from = 2; // от кого
+  string text = 3; // текст
+  int64 timestamp = 4; // время отправление
 }
