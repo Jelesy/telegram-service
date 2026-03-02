@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TelegramService_CreateSession_FullMethodName     = "/main.TelegramService/CreateSession"
-	TelegramService_DeleteSession_FullMethodName     = "/main.TelegramService/DeleteSession"
-	TelegramService_SendMessage_FullMethodName       = "/main.TelegramService/SendMessage"
-	TelegramService_SubscribeMessages_FullMethodName = "/main.TelegramService/SubscribeMessages"
+	TelegramService_CreateSession_FullMethodName     = "/telegram.TelegramService/CreateSession"
+	TelegramService_DeleteSession_FullMethodName     = "/telegram.TelegramService/DeleteSession"
+	TelegramService_SendMessage_FullMethodName       = "/telegram.TelegramService/SendMessage"
+	TelegramService_SubscribeMessages_FullMethodName = "/telegram.TelegramService/SubscribeMessages"
 )
 
 // TelegramServiceClient is the client API for TelegramService service.
@@ -212,7 +212,7 @@ type TelegramService_SubscribeMessagesServer = grpc.ServerStreamingServer[Messag
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TelegramService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "main.TelegramService",
+	ServiceName: "telegram.TelegramService",
 	HandlerType: (*TelegramServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

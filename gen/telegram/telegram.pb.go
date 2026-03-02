@@ -21,6 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Создание сэссии
 type CreateSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -109,6 +110,7 @@ func (x *CreateSessionResponse) GetQrCode() string {
 	return ""
 }
 
+// Удаление сэссии
 type DeleteSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -189,11 +191,12 @@ func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
 	return file_telegram_proto_rawDescGZIP(), []int{3}
 }
 
+// Отправка сообщения
 type SendMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Peer          string                 `protobuf:"bytes,2,opt,name=peer,proto3" json:"peer,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	Peer          string                 `protobuf:"bytes,2,opt,name=peer,proto3" json:"peer,omitempty"` // кому
+	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"` // текст
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -293,6 +296,7 @@ func (x *SendMessageResponse) GetMessageId() int64 {
 	return 0
 }
 
+// Подписание на получение сообщений
 type SubscribeMessagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -339,10 +343,10 @@ func (x *SubscribeMessagesRequest) GetSessionId() string {
 
 type MessageUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	MessageId     int64                  `protobuf:"varint,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	From          string                 `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	MessageId     int64                  `protobuf:"varint,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"` // id сообщения
+	From          string                 `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`                             // от кого
+	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                             // текст
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                  // время отправление
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,7 +413,7 @@ var File_telegram_proto protoreflect.FileDescriptor
 
 const file_telegram_proto_rawDesc = "" +
 	"\n" +
-	"\x0etelegram.proto\x12\x04main\"\x16\n" +
+	"\x0etelegram.proto\x12\btelegram\"\x16\n" +
 	"\x14CreateSessionRequest\"O\n" +
 	"\x15CreateSessionResponse\x12\x1d\n" +
 	"\n" +
@@ -435,12 +439,12 @@ const file_telegram_proto_rawDesc = "" +
 	"message_id\x18\x01 \x01(\x03R\tmessageId\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\tR\x04from\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1c\n" +
-	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp2\xb5\x02\n" +
-	"\x0fTelegramService\x12H\n" +
-	"\rCreateSession\x12\x1a.main.CreateSessionRequest\x1a\x1b.main.CreateSessionResponse\x12H\n" +
-	"\rDeleteSession\x12\x1a.main.DeleteSessionRequest\x1a\x1b.main.DeleteSessionResponse\x12B\n" +
-	"\vSendMessage\x12\x18.main.SendMessageRequest\x1a\x19.main.SendMessageResponse\x12J\n" +
-	"\x11SubscribeMessages\x12\x1e.main.SubscribeMessagesRequest\x1a\x13.main.MessageUpdate0\x01B\x11Z\x0f../gen/telegramb\x06proto3"
+	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp2\xd5\x02\n" +
+	"\x0fTelegramService\x12P\n" +
+	"\rCreateSession\x12\x1e.telegram.CreateSessionRequest\x1a\x1f.telegram.CreateSessionResponse\x12P\n" +
+	"\rDeleteSession\x12\x1e.telegram.DeleteSessionRequest\x1a\x1f.telegram.DeleteSessionResponse\x12J\n" +
+	"\vSendMessage\x12\x1c.telegram.SendMessageRequest\x1a\x1d.telegram.SendMessageResponse\x12R\n" +
+	"\x11SubscribeMessages\x12\".telegram.SubscribeMessagesRequest\x1a\x17.telegram.MessageUpdate0\x01B\x11Z\x0f../gen/telegramb\x06proto3"
 
 var (
 	file_telegram_proto_rawDescOnce sync.Once
@@ -456,24 +460,24 @@ func file_telegram_proto_rawDescGZIP() []byte {
 
 var file_telegram_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_telegram_proto_goTypes = []any{
-	(*CreateSessionRequest)(nil),     // 0: main.CreateSessionRequest
-	(*CreateSessionResponse)(nil),    // 1: main.CreateSessionResponse
-	(*DeleteSessionRequest)(nil),     // 2: main.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),    // 3: main.DeleteSessionResponse
-	(*SendMessageRequest)(nil),       // 4: main.SendMessageRequest
-	(*SendMessageResponse)(nil),      // 5: main.SendMessageResponse
-	(*SubscribeMessagesRequest)(nil), // 6: main.SubscribeMessagesRequest
-	(*MessageUpdate)(nil),            // 7: main.MessageUpdate
+	(*CreateSessionRequest)(nil),     // 0: telegram.CreateSessionRequest
+	(*CreateSessionResponse)(nil),    // 1: telegram.CreateSessionResponse
+	(*DeleteSessionRequest)(nil),     // 2: telegram.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),    // 3: telegram.DeleteSessionResponse
+	(*SendMessageRequest)(nil),       // 4: telegram.SendMessageRequest
+	(*SendMessageResponse)(nil),      // 5: telegram.SendMessageResponse
+	(*SubscribeMessagesRequest)(nil), // 6: telegram.SubscribeMessagesRequest
+	(*MessageUpdate)(nil),            // 7: telegram.MessageUpdate
 }
 var file_telegram_proto_depIdxs = []int32{
-	0, // 0: main.TelegramService.CreateSession:input_type -> main.CreateSessionRequest
-	2, // 1: main.TelegramService.DeleteSession:input_type -> main.DeleteSessionRequest
-	4, // 2: main.TelegramService.SendMessage:input_type -> main.SendMessageRequest
-	6, // 3: main.TelegramService.SubscribeMessages:input_type -> main.SubscribeMessagesRequest
-	1, // 4: main.TelegramService.CreateSession:output_type -> main.CreateSessionResponse
-	3, // 5: main.TelegramService.DeleteSession:output_type -> main.DeleteSessionResponse
-	5, // 6: main.TelegramService.SendMessage:output_type -> main.SendMessageResponse
-	7, // 7: main.TelegramService.SubscribeMessages:output_type -> main.MessageUpdate
+	0, // 0: telegram.TelegramService.CreateSession:input_type -> telegram.CreateSessionRequest
+	2, // 1: telegram.TelegramService.DeleteSession:input_type -> telegram.DeleteSessionRequest
+	4, // 2: telegram.TelegramService.SendMessage:input_type -> telegram.SendMessageRequest
+	6, // 3: telegram.TelegramService.SubscribeMessages:input_type -> telegram.SubscribeMessagesRequest
+	1, // 4: telegram.TelegramService.CreateSession:output_type -> telegram.CreateSessionResponse
+	3, // 5: telegram.TelegramService.DeleteSession:output_type -> telegram.DeleteSessionResponse
+	5, // 6: telegram.TelegramService.SendMessage:output_type -> telegram.SendMessageResponse
+	7, // 7: telegram.TelegramService.SubscribeMessages:output_type -> telegram.MessageUpdate
 	4, // [4:8] is the sub-list for method output_type
 	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
