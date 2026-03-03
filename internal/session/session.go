@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"telegram-service/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/gotd/td/telegram"
@@ -33,12 +34,14 @@ type MessageUpdate struct {
 
 type Manager struct {
 	sessions map[string]*Session
+	conf     *config.Config
 	mu       sync.RWMutex
 }
 
-func NewManager() *Manager {
+func NewManager(conf *config.Config) *Manager {
 	return &Manager{
 		sessions: make(map[string]*Session),
+		conf:     conf,
 		mu:       sync.RWMutex{},
 	}
 }

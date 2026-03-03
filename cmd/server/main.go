@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	pb "telegram-service/gen/telegram"
+	"telegram-service/internal/config"
 	"telegram-service/internal/service"
 	"telegram-service/internal/session"
 
@@ -11,7 +12,9 @@ import (
 )
 
 func main() {
-	mgr := session.NewManager()
+	conf := config.MustLoad()
+
+	mgr := session.NewManager(conf)
 	srv := service.NewTelegramService(mgr)
 
 	lis, err := net.Listen("tcp", ":8080")
