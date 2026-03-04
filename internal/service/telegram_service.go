@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	pb "telegram-service/gen/telegram"
+	"telegram-service/internal/colorlog"
 	"telegram-service/internal/session"
 
 	"google.golang.org/grpc/codes"
@@ -23,10 +24,20 @@ func NewTelegramService(mgr *session.Manager) *TelegramService {
 func (s *TelegramService) CreateSession(ctx context.Context, req *pb.CreateSessionRequest) (*pb.CreateSessionResponse, error) {
 	sess, err := s.mgr.Create(ctx)
 	if err != nil {
+		log.Println("error CreateSession:", err)
 		return nil, status.Error(codes.Internal, "failed to create session")
 	}
-	// TODO: QR auth logic here
-	qr := "TODO: generate QR with gotd/td QRLogin" // Используем telegram/auth/qrlogin.QR.Auth [web:2]
+	colorlog.Solo("sess", sess)
+
+	qr, err := s.mgr.Qr(sess.GetID())
+	if err != nil {
+		log.Println("error CreateSession qr auth:", err)
+		err := s.mgr.Delete(sess.ID)
+		if err != nil {
+			log.Println("error delete session:", err)
+		}
+		return nil, status.Error(codes.Internal, "failed to create qr for session")
+	}
 	return &pb.CreateSessionResponse{SessionId: sess.ID, QrCode: qr}, nil
 }
 

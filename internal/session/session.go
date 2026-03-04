@@ -2,19 +2,28 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
+	"telegram-service/internal/colorlog"
 	"telegram-service/internal/config"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gotd/td/telegram"
-	_ "github.com/gotd/td/telegram/auth"
+	"github.com/gotd/td/telegram/auth/qrlogin"
+	"github.com/gotd/td/tg"
+	"github.com/gotd/td/tgerr"
+	"github.com/skip2/go-qrcode"
 	"google.golang.org/grpc"
 )
 
 var (
-	ErrNoSess = fmt.Errorf("no session")
+	ErrNoSess     = fmt.Errorf("no session")
+	ErrQrTimedOut = fmt.Errorf("qr timed out")
+	ErrQrSended   = fmt.Errorf("qr was sended")
+	ErrTimedOut   = fmt.Errorf("timed out")
 )
 
 type Session struct {
@@ -47,13 +56,18 @@ func NewManager(conf *config.Config) *Manager {
 }
 
 func (m *Manager) Create(ctx context.Context) (*Session, error) {
+	m.mu.RLock()
+	client := telegram.NewClient(m.conf.AppId, m.conf.AppHash, telegram.Options{})
+	m.mu.RUnlock()
+
 	id := uuid.New().String()
 	s := &Session{
 		ID:      id,
+		Client:  client,
 		Updates: make(chan *MessageUpdate, 100),
 		done:    make(chan struct{}),
 	}
-	// TODO: init client with QR auth
+
 	m.mu.Lock()
 	m.sessions[id] = s
 	m.mu.Unlock()
@@ -67,6 +81,12 @@ func (m *Manager) Get(id string) (*Session, bool) {
 	return s, ok
 }
 
+func (s *Session) GetID() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.ID
+}
+
 func (m *Manager) Delete(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -76,6 +96,128 @@ func (m *Manager) Delete(id string) error {
 		return nil
 	} else {
 		return ErrNoSess
+	}
+}
+
+func (m *Manager) Qr(sessId string) (string, error) {
+	m.mu.RLock()
+	s, ok := m.sessions[sessId]
+	if !ok {
+		return "", ErrNoSess
+	}
+	m.mu.RUnlock()
+
+	dispatcher := tg.NewUpdateDispatcher()
+
+	ctx := context.Background()
+
+	// таймер 30 сек. на генерацию QR
+	ctxWT, cancel := context.WithTimeout(ctx, time.Second*30)
+
+	var qrChan = make(chan string, 1)
+	defer close(qrChan)
+	//var errChan = make(chan error, 1)
+	//defer close(errChan)
+
+	go func() {
+		defer cancel()
+		err := s.Client.Run(ctx, func(ctx context.Context) error {
+			var isFirst = true
+			_, err := s.Client.QR().Auth(ctx, qrlogin.OnLoginToken(dispatcher), func(ctx context.Context, token qrlogin.Token) error {
+				// Первый QR никто не сканировал - новый не нужен
+				if !isFirst {
+					return ErrQrTimedOut
+				}
+				isFirst = false
+
+				// Проверка на долгое ожидание qr
+				// (Передается не этот контекст, потому что иначе прервется авторизация на нашей стороне,
+				// а пользователь может отсканировать qr)
+				select {
+				case <-ctxWT.Done():
+					//errChan <- ErrTimedOut
+					return ErrTimedOut
+				default:
+				}
+
+				colorlog.Solo("токен истекает", token.Expires().Format(time.Layout))
+
+				qr, err := qrcode.New(token.URL(), qrcode.Medium)
+				if err != nil {
+					return err
+				}
+
+				colorlog.Solo("qr url", token.URL())
+				qrChan <- token.URL()
+
+				qrCode := qr.ToSmallString(false)
+				log.Println("qr code:")
+				fmt.Print(qrCode)
+
+				return nil
+			})
+
+			if err != nil {
+				delErr := m.Delete(sessId)
+				if delErr != nil {
+					log.Println("can't delete temporary session:", delErr)
+				}
+
+				if errors.Is(err, ErrQrTimedOut) {
+					log.Println("gotd wrapped err:", err)
+					return ErrQrTimedOut
+				}
+
+				if tgerr.Is(err, "SESSION_PASSWORD_NEEDED") {
+					return err
+				}
+
+				return err
+			}
+
+			user, err := s.Client.Self(ctx)
+			if err != nil {
+				return err
+			}
+
+			if status, err := s.Client.Auth().Status(ctx); status.Authorized {
+				fmt.Printf(
+					"Login successfully!\n"+
+						"ID: %v,\n"+
+						"Username: %s,\n"+
+						"First name: %s,\n"+
+						"Last name: %s,\n"+
+						"Status: %s,\n"+
+						"Premium: %v,\n",
+					user.ID,
+					user.Username,
+					user.FirstName,
+					user.LastName,
+					user.Status,
+					user.Premium,
+				)
+				colorlog.Solo("user", user)
+			} else {
+				delErr := m.Delete(sessId)
+				if delErr != nil {
+					log.Println("can't delete temporary session:", delErr)
+				}
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			log.Println("auth qr error:", err)
+		}
+	}()
+
+	select {
+	case <-ctxWT.Done():
+		return "", ErrTimedOut
+	case qrStr := <-qrChan:
+		return qrStr, nil
 	}
 }
 
