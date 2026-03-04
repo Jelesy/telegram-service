@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"telegram-service/internal/printer"
+	"telegram-service/internal/colorlog"
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
@@ -21,9 +21,9 @@ type ServerConf struct {
 }
 
 type Config struct {
-	Env    string `env:"ENV" env-default:"local"`
-	Tg     TelegramConf
-	Server ServerConf
+	Env string `env:"ENV" env-default:"local"`
+	TelegramConf
+	ServerConf
 }
 
 func MustLoad() *Config {
@@ -32,7 +32,7 @@ func MustLoad() *Config {
 	if err != nil {
 		log.Fatalf("Failed to get current working directory: %s", err)
 	}
-	printer.CoolSoloLogPrint("Current working directory", cwd)
+	colorlog.Solo("Current working directory", cwd)
 
 	// Получение переменных из .env
 	err = godotenv.Load()
@@ -45,11 +45,11 @@ func MustLoad() *Config {
 	if err := cleanenv.ReadEnv(&conf); err != nil {
 		log.Fatalf("can't read config: %s", err)
 	}
-	printer.CoolSoloLogPrint("Config", conf)
+	colorlog.Solo("Config", conf)
 
 	return &conf
 }
 
 func (c *Config) GetAddress() string {
-	return fmt.Sprintf("%s:%s", c.Server.Host, c.Server.Port)
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
