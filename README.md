@@ -1,5 +1,5 @@
 # Telegram Service
-
+****
 ## Запуск
 
 ```linux
@@ -12,6 +12,8 @@
  go run cmd/server/main.go
 ```
 
+****
+
 ## Окружение
 1. `APP_ID` - id приложения `*`
 2. `APP_HASH` - hash приложения `*`
@@ -21,4 +23,11 @@
 
 `*` - обязательно к заполнению
 
-## Запуск
+****
+
+## Примеры запросов
+
+**Создание сессии:**  `CreateSession`
+```cmd
+grpcurl -d '{}' -plaintext localhost:8082 telegram.TelegramService/CreateSession
+```
