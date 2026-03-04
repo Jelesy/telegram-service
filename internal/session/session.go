@@ -115,8 +115,6 @@ func (m *Manager) Qr(sessId string) (string, error) {
 
 	var qrChan = make(chan string, 1)
 	defer close(qrChan)
-	//var errChan = make(chan error, 1)
-	//defer close(errChan)
 
 	go func() {
 		defer cancel()
@@ -134,7 +132,6 @@ func (m *Manager) Qr(sessId string) (string, error) {
 				// а пользователь может отсканировать qr)
 				select {
 				case <-ctxWT.Done():
-					//errChan <- ErrTimedOut
 					return ErrTimedOut
 				default:
 				}
