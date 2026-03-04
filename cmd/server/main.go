@@ -17,7 +17,7 @@ func main() {
 	mgr := session.NewManager(conf)
 	srv := service.NewTelegramService(mgr)
 
-	lis, err := net.Listen("tcp", ":8080")
+	lis, err := net.Listen("tcp", conf.GetAddress())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -25,9 +25,10 @@ func main() {
 	grpcSrv := grpc.NewServer(
 		grpc.UnaryInterceptor(mgr.CheckSessionInterceptor),
 	)
+	
 	pb.RegisterTelegramServiceServer(grpcSrv, srv)
 
-	log.Println("gRPC server listening on :8080")
+	log.Println("gRPC server listening on", conf.GetAddress())
 	if err := grpcSrv.Serve(lis); err != nil {
 		log.Fatal(err)
 	}
