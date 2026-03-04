@@ -22,7 +22,6 @@ import (
 var (
 	ErrNoSess     = fmt.Errorf("no session")
 	ErrQrTimedOut = fmt.Errorf("qr timed out")
-	ErrQrSended   = fmt.Errorf("qr was sended")
 	ErrTimedOut   = fmt.Errorf("timed out")
 )
 
