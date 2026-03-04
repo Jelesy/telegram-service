@@ -8,6 +8,14 @@ import (
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+)
+
+const (
+	envProd  = "prod"
+	envTest  = "test"
+	envLocal = "local"
 )
 
 type TelegramConf struct {
@@ -26,6 +34,7 @@ type Config struct {
 	ServerConf
 }
 
+// MustLoad load environment variables from .env files
 func MustLoad() *Config {
 	// Получение текущей рабочей директории
 	cwd, err := os.Getwd()
@@ -50,6 +59,16 @@ func MustLoad() *Config {
 	return &conf
 }
 
+// GetAddress return full address, for example [127.0.0.1:8080]
 func (c *Config) GetAddress() string {
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
+}
+
+// ConfigureGrpcServer configure grpc-server using config
+func (c *Config) ConfigureGrpcServer(server *grpc.Server) {
+	// reflection for local or test
+	if c.Env == envLocal || c.Env == envTest {
+		reflection.Register(server)
+	}
+	// ...
 }

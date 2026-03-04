@@ -9,7 +9,6 @@ import (
 	"telegram-service/internal/session"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -26,8 +25,9 @@ func main() {
 	grpcSrv := grpc.NewServer(
 		grpc.UnaryInterceptor(mgr.CheckSessionInterceptor),
 	)
-	reflection.Register(grpcSrv)
-	
+
+	conf.ConfigureGrpcServer(grpcSrv)
+
 	pb.RegisterTelegramServiceServer(grpcSrv, srv)
 
 	log.Println("gRPC server listening on", conf.GetAddress())
