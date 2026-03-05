@@ -34,8 +34,10 @@ type Config struct {
 	ServerConf
 }
 
-// MustLoad load environment variables from .env files
-func MustLoad() *Config {
+// MustLoad load environment variables from .env files.
+//
+// `Filenames` is env variables paths (optional)
+func MustLoad(filenames ...string) *Config {
 	// Получение текущей рабочей директории
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -44,7 +46,7 @@ func MustLoad() *Config {
 	colorlog.Solo("Current working directory", cwd)
 
 	// Получение переменных из .env
-	err = godotenv.Load()
+	err = godotenv.Load(filenames...)
 	if err != nil {
 		log.Fatalf("Failed to load .env file: %s", err)
 	}

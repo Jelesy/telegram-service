@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	pb "telegram-service/gen/telegram"
+	"telegram-service/internal/config"
 	"telegram-service/internal/service"
 	"telegram-service/internal/session"
 	"testing"
@@ -13,16 +14,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-const listenAddr string = "127.0.0.1:8082"
+const (
+	listenHost = "127.0.0.1"
+	listenPort = "8082"
+	listenAddr = listenHost + ":" + listenPort
+)
 
 // Ожидание в десятках миллисекунд
 // amount * 10ms
-func wait(amout int) {
-	time.Sleep(time.Duration(amout) * 10 * time.Millisecond)
+func wait(amount int) {
+	time.Sleep(time.Duration(amount) * 10 * time.Millisecond)
 }
 
 func StartMyGrpcServer(ctx context.Context, listenAddr string) error {
-	mgr := session.NewManager()
+	cfg := config.MustLoad("../.env")
+
+	mgr := session.NewManager(cfg)
 	srv := service.NewTelegramService(mgr)
 
 	lis, err := net.Listen("tcp", listenAddr)
