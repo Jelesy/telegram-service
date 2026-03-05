@@ -2,14 +2,19 @@ package service
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log"
 	pb "telegram-service/gen/telegram"
 	"telegram-service/internal/colorlog"
 	"telegram-service/internal/session"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+)
+
+var (
+	ErrIncorrectSessID = fmt.Errorf("incorrect session_id")
 )
 
 type TelegramService struct {
@@ -22,6 +27,8 @@ func NewTelegramService(mgr *session.Manager) *TelegramService {
 }
 
 func (s *TelegramService) CreateSession(ctx context.Context, req *pb.CreateSessionRequest) (*pb.CreateSessionResponse, error) {
+	const op = "CreateSession"
+
 	sess, err := s.mgr.Create(ctx)
 	if err != nil {
 		log.Println("error CreateSession:", err)
@@ -29,33 +36,45 @@ func (s *TelegramService) CreateSession(ctx context.Context, req *pb.CreateSessi
 	}
 	colorlog.Solo("sess", sess)
 
-	qr, err := s.mgr.Qr(sess.GetID())
+	sessId := sess.GetID()
+	qr, err := s.mgr.QR(sessId)
 	if err != nil {
 		log.Println("error CreateSession qr auth:", err)
-		err := s.mgr.Delete(sess.ID)
+		err := s.mgr.Delete(sessId)
 		if err != nil {
 			log.Println("error delete session:", err)
 		}
 		return nil, status.Error(codes.Internal, "failed to create qr for session")
 	}
-	return &pb.CreateSessionResponse{SessionId: sess.ID, QrCode: qr}, nil
+
+	storage, err := sess.SessionStorage.LoadSession(context.Background())
+	colorlog.Multi("storage", storage, err)
+
+	log.Println(op, "success create for:", sessId)
+
+	return &pb.CreateSessionResponse{SessionId: sessId, QrCode: qr}, nil
 }
 
 func (s *TelegramService) DeleteSession(ctx context.Context, req *pb.DeleteSessionRequest) (*pb.DeleteSessionResponse, error) {
 	const op = "DeleteSession"
 
-	if req.SessionId == "" {
+	sessId := req.SessionId
+	if !isValidSessionID(sessId) {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid argument")
 	}
 
-	err := s.mgr.Delete(req.SessionId)
-	if err != nil {
-		if errors.As(err, &session.ErrNoSess) {
-			return nil, status.Errorf(codes.NotFound, "session not found")
-		}
-		log.Println(op, err)
-		return nil, status.Errorf(codes.Unknown, "unknown error")
+	ok := s.mgr.Have(sessId)
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
+
+	err := s.mgr.LogOut(sessId)
+	if err != nil {
+		log.Println(op, "can't log out:", err)
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+
+	log.Println(op, "success log out for:", sessId)
 
 	return &pb.DeleteSessionResponse{}, nil
 }
@@ -84,4 +103,9 @@ func (s *TelegramService) SubscribeMessages(req *pb.SubscribeMessagesRequest, sr
 	log.Printf("%v: %+v\n", op, sess)
 	// TODO: stream from sess.Updates to srv.Send [web:4]
 	return status.Error(codes.Unimplemented, "TODO: bidirectional stream")
+}
+
+func isValidSessionID(s string) bool {
+	_, err := uuid.Parse(s)
+	return err == nil
 }
