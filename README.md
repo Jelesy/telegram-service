@@ -34,7 +34,7 @@ grpcurl -d '{}' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/
 
 **Удаление сессии: DeleteSession**
 
-`session_od` - id полученное из `CreateSession`
+`session_id` - id полученное из `CreateSession`
 ```cmd
 grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/DeleteSession
 ```
