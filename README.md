@@ -27,7 +27,14 @@
 
 ## Примеры запросов
 
-**Создание сессии:**  `CreateSession`
+**Создание сессии: CreateSession**
 ```cmd
-grpcurl -d '{}' -plaintext localhost:8082 telegram.TelegramService/CreateSession
+grpcurl -d '{}' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/CreateSession
+```
+
+**Удаление сессии: DeleteSession**
+
+`session_od` - id полученное из `CreateSession`
+```cmd
+grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/DeleteSession
 ```
