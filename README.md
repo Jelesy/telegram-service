@@ -38,3 +38,14 @@ grpcurl -d '{}' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/
 ```cmd
 grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/DeleteSession
 ```
+
+**Отправка сообщения: SendMessage**
+
+1. `peer` - id чата
+2. `text` - текст сообщения
+
+```cmd
+grpcurl -d '{ "peer": "<peer>",
+"session_id": "<session_id>",
+"text": "<text>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/DeleteSession
+```
