@@ -41,7 +41,7 @@ grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_P
 
 **Отправка сообщения: SendMessage**
 
-1. `peer` - id чата
+1. `peer` - имя пользователя, номер телефона или ссылка на профиль (*"@durov"*, *"+13115552368"*, *"t.me/telegram"* )
 2. `text` - текст сообщения
 
 ```cmd
