@@ -5,16 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"sync"
 	"telegram-service/internal/colorlog"
 	"telegram-service/internal/e"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth/qrlogin"
+	"github.com/gotd/td/telegram/message"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
 	"github.com/skip2/go-qrcode"
@@ -249,36 +248,26 @@ func (s *Session) SendTo(peerStr, text string) (messageID int64, err error) {
 		default:
 		}
 
-		// id сообщения клиента
-		id, randErr := crypto.RandInt64(crypto.DefaultRand())
-		if err != nil {
-			log.Println(e.Wrap(fmt.Sprintf("%s can't rand id:", op), randErr))
-			errChan <- randErr
-			return
-		}
-
-		// peer в int
-		peer, cnvErr := strconv.Atoi(peerStr)
-		if cnvErr != nil {
-			log.Println(e.Wrap(fmt.Sprintf("%s can't convert to input peer:", op), cnvErr))
-			errChan <- e.Wrap(ErrInvlidPeer.Error(), cnvErr)
-			return
-		}
-
-		messageReq := &tg.MessagesSendMessageRequest{
-			Peer:     &tg.InputPeerChat{ChatID: int64(peer)},
-			Message:  text,
-			RandomID: id,
-		}
-		colorlog.Solo("messageReq", messageReq)
-
-		// Запрос
-		_, sendErr := s.Client.API().MessagesSendMessage(s.ctx, messageReq)
+		sender := message.NewSender(s.Client.API())
+		req := sender.Resolve(peerStr)
+		updates, sendErr := req.Text(s.ctx, text)
 		if sendErr != nil {
-			log.Println(e.Wrap(op, cnvErr))
+			log.Println(e.Wrap(op, sendErr))
 			errChan <- sendErr
 		}
-		messageIdChan <- id
+
+		var messID int64
+		if updates, ok := updates.(*tg.Updates); ok {
+			upds := updates.GetUpdates()
+			for _, upd := range upds {
+				if updMessID, ok := upd.(*tg.UpdateMessageID); ok {
+					messID = int64(updMessID.ID)
+					break
+				}
+			}
+		}
+
+		messageIdChan <- messID
 	}
 
 	select {
