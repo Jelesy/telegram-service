@@ -14,6 +14,7 @@ import (
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -170,11 +171,13 @@ func (m *Manager) NewDefaultTelegramClient(opts ...telegram.Options) (*telegram.
 }
 
 func (m *Manager) UnaryCheckSessionInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	colorlog.Multi("unary request params", ctx, req, info)
+	md, _ := metadata.FromIncomingContext(ctx)
+	colorlog.Multi("unary request params", md, req, info)
 	return handler(ctx, req)
 }
 
 func (m *Manager) StreamCheckSessionInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	colorlog.Multi("stream request params", srv, ss.Context(), ss, info)
+	md, _ := metadata.FromIncomingContext(ss.Context())
+	colorlog.Multi("stream request params", srv, md, ss, info)
 	return handler(srv, ss)
 }
