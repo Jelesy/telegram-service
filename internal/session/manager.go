@@ -169,7 +169,12 @@ func (m *Manager) NewDefaultTelegramClient(opts ...telegram.Options) (*telegram.
 	}), nil
 }
 
-func (m *Manager) CheckSessionInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	colorlog.Multi("request params", ctx, req, info)
+func (m *Manager) UnaryCheckSessionInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+	colorlog.Multi("unary request params", ctx, req, info)
 	return handler(ctx, req)
+}
+
+func (m *Manager) StreamCheckSessionInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	colorlog.Multi("stream request params", srv, ss.Context(), ss, info)
+	return handler(srv, ss)
 }

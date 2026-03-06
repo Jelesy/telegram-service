@@ -23,7 +23,8 @@ func main() {
 	}
 
 	grpcSrv := grpc.NewServer(
-		grpc.UnaryInterceptor(mgr.CheckSessionInterceptor),
+		grpc.UnaryInterceptor(mgr.UnaryCheckSessionInterceptor),
+		grpc.StreamInterceptor(mgr.StreamCheckSessionInterceptor),
 	)
 
 	conf.ConfigureGrpcServer(grpcSrv)
