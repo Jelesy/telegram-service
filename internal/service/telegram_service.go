@@ -86,7 +86,7 @@ func (s *TelegramService) SendMessage(ctx context.Context, req *pb.SendMessageRe
 		return nil, status.Error(codes.NotFound, "session not found")
 	}
 
-	log.Printf("%v: %+v\n", op, sess)
+	log.Printf("%v: %+v\n%v %v\n", op, sess, req.Peer, req.Text)
 
 	missing := make([]string, 0, 2)
 	peer := req.Peer
