@@ -38,7 +38,7 @@ func StartMyGrpcServer(ctx context.Context, listenAddr string) error {
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(mgr.CheckSessionInterceptor),
+		grpc.UnaryInterceptor(mgr.UnaryCheckSessionInterceptor),
 	)
 	pb.RegisterTelegramServiceServer(grpcServer, srv)
 
