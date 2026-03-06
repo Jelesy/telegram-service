@@ -16,5 +16,10 @@ func Multi(title string, args ...interface{}) {
 
 // Solo - логирование одного аргумента
 func Solo(title string, arg interface{}) {
+	log.Printf("\033[36m%s:\033[0m %+v\n", title, arg)
+}
+
+// SoloT - логирование одного аргумента с выводом типа
+func SoloT(title string, arg interface{}) {
 	log.Printf("\033[36m%s:\033[0m \033[34m%T\033[0m %+v\n", title, arg, arg)
 }
