@@ -49,7 +49,7 @@ grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_P
 ```cmd
 grpcurl -d '{ "peer": "<peer>",
 "session_id": "<session_id>",
-"text": "<text>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/DeleteSession
+"text": "<text>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/SendMessage
 ```
 
 **Отправка фото: SendPhoto**
