@@ -7,6 +7,7 @@ service TelegramService {
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
   rpc SubscribeMessages(SubscribeMessagesRequest) returns (stream MessageUpdate);
+  rpc SendPhoto(SendPhotoRequest) returns (SendPhotoResponse);
 }
 
 // Создание сэссии
@@ -29,6 +30,16 @@ message SendMessageRequest {
   string text = 3; // текст
 }
 message SendMessageResponse {
+  int64 message_id = 1;
+}
+
+// Отправка фото
+message SendPhotoRequest {
+  string session_id = 1;
+  string peer = 2; // кому
+  string photo = 3; // фото
+}
+message SendPhotoResponse {
   int64 message_id = 1;
 }
 

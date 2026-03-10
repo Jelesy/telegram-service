@@ -240,6 +240,26 @@ func (s *Session) SendTo(peerStr, text string) (messageID int64, err error) {
 	return messageID, nil
 }
 
+func (s *Session) SendPhoto(peerStr, photoUrl string) (messageID int64, err error) {
+	const op = "SendPhoto"
+
+	defer func() {
+		err = e.WrapIfErr(op, err)
+	}()
+
+	sender := message.NewSender(s.Client.API())
+	req := sender.Resolve(peerStr)
+	updates, sendErr := req.PhotoExternal(s.ctx, photoUrl)
+	if sendErr != nil {
+		log.Println(e.Wrap(op, sendErr))
+		return 0, sendErr
+	}
+
+	messageID = getMessageId(updates)
+
+	return messageID, nil
+}
+
 func (s *Session) Run(f func(ctx context.Context) error) error {
 	err := s.Client.Run(s.ctx, f)
 	return err

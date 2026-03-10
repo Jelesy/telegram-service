@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	pb "telegram-service/gen/telegram"
 	"telegram-service/internal/colorlog"
@@ -14,8 +15,9 @@ import (
 )
 
 var (
-	ErrIncorrectSessID = fmt.Errorf("invalid session_id")
-	ErrIncorrectArgs   = fmt.Errorf("invalid arguments")
+	ErrIncorrectSessID   = fmt.Errorf("invalid session_id")
+	ErrIncorrectPhotoUrl = fmt.Errorf("invalid photo url")
+	ErrIncorrectArgs     = fmt.Errorf("invalid arguments")
 )
 
 type TelegramService struct {
@@ -112,6 +114,46 @@ func (s *TelegramService) SendMessage(ctx context.Context, req *pb.SendMessageRe
 	return &pb.SendMessageResponse{MessageId: messageID}, nil
 }
 
+func (s *TelegramService) SendPhoto(ctx context.Context, req *pb.SendPhotoRequest) (*pb.SendPhotoResponse, error) {
+	const op = "SendPhoto"
+
+	sess, ok := s.mgr.Get(req.SessionId)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+
+	log.Printf("%v: %+v\n%v %v\n", op, sess, req.Peer, req.Photo)
+
+	missing := make([]string, 0, 2)
+	peer := req.Peer
+	if peer == "" {
+		missing = append(missing, "peer")
+	}
+	photoUrl := req.Photo
+	if photoUrl == "" {
+		missing = append(missing, "photo url")
+	}
+
+	if len(missing) != 0 {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%s (%s)", ErrIncorrectSessID, strings.Join(missing, ", ")))
+	}
+
+	ok = isURLValid(photoUrl)
+	if !ok {
+		return nil, status.Errorf(codes.InvalidArgument, ErrIncorrectPhotoUrl.Error())
+	}
+
+	messageID, err := sess.SendPhoto(peer, photoUrl)
+	if err != nil {
+		log.Println(op, "can't send photo:", err)
+		return nil, status.Errorf(codes.NotFound, "can't send photo")
+	}
+
+	log.Println(op, "success for:", sess.GetID())
+
+	return &pb.SendPhotoResponse{MessageId: messageID}, nil
+}
+
 func (s *TelegramService) SubscribeMessages(req *pb.SubscribeMessagesRequest, srv pb.TelegramService_SubscribeMessagesServer) error {
 	const op = "SubscribeMessages"
 
@@ -123,4 +165,9 @@ func (s *TelegramService) SubscribeMessages(req *pb.SubscribeMessagesRequest, sr
 	log.Printf("%v: %+v\n", op, sess)
 	// TODO: stream from sess.Updates to srv.Send [web:4]
 	return status.Error(codes.Unimplemented, "TODO: bidirectional stream")
+}
+
+func isURLValid(str string) bool {
+	u, err := url.ParseRequestURI(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }
