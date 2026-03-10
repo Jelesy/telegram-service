@@ -1,7 +1,5 @@
 package session
 
-type requestPipe func()
-
 type messageUpdatePipe struct {
 	pipe chan *messageUpdate
 }

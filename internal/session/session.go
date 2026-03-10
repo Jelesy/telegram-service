@@ -24,27 +24,24 @@ var (
 )
 
 type Session struct {
-	ID          string
-	Client      *telegram.Client
-	Updates     *messageUpdatePipe
-	mu          sync.RWMutex
-	ctx         context.Context
-	cancel      context.CancelFunc
-	requestPipe chan requestPipe
+	ID      string
+	Client  *telegram.Client
+	Updates *messageUpdatePipe
+	mu      sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewSession(client *telegram.Client) *Session {
 	ctx, cancel := context.WithCancel(context.Background())
 	id := uuid.New().String()
-	reqPipe := make(chan requestPipe, 10)
 	updates := newMessageUpdatePipe()
 	return &Session{
-		ID:          id,
-		Client:      client,
-		Updates:     updates,
-		ctx:         ctx,
-		cancel:      cancel,
-		requestPipe: reqPipe,
+		ID:      id,
+		Client:  client,
+		Updates: updates,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -76,7 +73,7 @@ func (m *Manager) QR(sessID string) (qrStr string, err error) {
 	defer close(qrChan)
 	var errChan = make(chan error, 1)
 
-	s.requestPipe <- func() {
+	go func() {
 		defer cancel()
 		var isFirst = true
 		_, err := s.Client.QR().Auth(s.ctx, qrlogin.OnLoginToken(dispatcher), func(ctx context.Context, token qrlogin.Token) error {
@@ -161,7 +158,7 @@ func (m *Manager) QR(sessID string) (qrStr string, err error) {
 			log.Println(e.Wrap(op, err))
 			return
 		}
-	}
+	}()
 
 	select {
 	case err = <-errChan:
@@ -194,8 +191,6 @@ func (s *Session) StartClientSession() error {
 				select {
 				case <-sessCtx.Done():
 					return nil
-				case f := <-s.requestPipe:
-					go f()
 				}
 			}
 		})
@@ -232,53 +227,15 @@ func (s *Session) SendTo(peerStr, text string) (messageID int64, err error) {
 		err = e.WrapIfErr(op, err)
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	ctxWT, cancel := context.WithTimeout(ctx, time.Second*30)
-	defer cancel()
-
-	var errChan = make(chan error, 1)
-	var messageIdChan = make(chan int64, 1)
-	defer close(messageIdChan)
-
-	s.requestPipe <- func() {
-		defer close(errChan)
-		select {
-		case <-ctxWT.Done():
-			return
-		default:
-		}
-
-		sender := message.NewSender(s.Client.API())
-		req := sender.Resolve(peerStr)
-		updates, sendErr := req.Text(s.ctx, text)
-		if sendErr != nil {
-			log.Println(e.Wrap(op, sendErr))
-			errChan <- sendErr
-		}
-
-		var messID int64
-		if updates, ok := updates.(*tg.Updates); ok {
-			upds := updates.GetUpdates()
-			for _, upd := range upds {
-				if updMessID, ok := upd.(*tg.UpdateMessageID); ok {
-					messID = int64(updMessID.ID)
-					break
-				}
-			}
-		}
-
-		messageIdChan <- messID
+	sender := message.NewSender(s.Client.API())
+	req := sender.Resolve(peerStr)
+	updates, sendErr := req.Text(s.ctx, text)
+	if sendErr != nil {
+		log.Println(e.Wrap(op, sendErr))
+		return 0, err
 	}
 
-	select {
-	case <-ctxWT.Done():
-		return 0, ErrTimedOut
-	case err = <-errChan:
-		if err != nil {
-			return 0, err
-		}
-	case messageID = <-messageIdChan:
-	}
+	messageID = getMessageId(updates)
 
 	return messageID, nil
 }
@@ -291,4 +248,16 @@ func (s *Session) Run(f func(ctx context.Context) error) error {
 func IsValidSessionID(s string) bool {
 	_, err := uuid.Parse(s)
 	return err == nil
+}
+
+func getMessageId(updates tg.UpdatesClass) int64 {
+	if updates, ok := updates.(*tg.Updates); ok {
+		upds := updates.GetUpdates()
+		for _, upd := range upds {
+			if updMessID, ok := upd.(*tg.UpdateMessageID); ok {
+				return int64(updMessID.ID)
+			}
+		}
+	}
+	return 0
 }

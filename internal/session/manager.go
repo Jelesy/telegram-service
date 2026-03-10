@@ -105,30 +105,9 @@ func (m *Manager) LogOut(sessID string) (err error) {
 		return ErrNoSess
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	ctxWT, cancel := context.WithTimeout(ctx, time.Second*30)
-
-	defer cancel()
-	var errChan = make(chan error, 1)
-
-	s.requestPipe <- func() {
-		defer close(errChan)
-		select {
-		case <-ctxWT.Done():
-			return
-		default:
-		}
-		_, err := s.Client.API().AuthLogOut(s.ctx)
-		errChan <- err
-	}
-
-	select {
-	case err = <-errChan:
-		if err != nil {
-			return err
-		}
-	case <-ctxWT.Done():
-		return ErrTimedOut
+	_, err = s.Client.API().AuthLogOut(s.ctx)
+	if err != nil {
+		return err
 	}
 
 	// удаление локально
