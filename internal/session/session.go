@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	pb "telegram-service/gen/telegram"
 	"telegram-service/internal/colorlog"
 	"telegram-service/internal/e"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth/qrlogin"
 	"github.com/gotd/td/telegram/message"
@@ -21,28 +23,58 @@ import (
 
 var (
 	ErrInvlidPeer = fmt.Errorf("invalid peer")
+	ErrSend       = fmt.Errorf("can't send message")
+	ErrAlreadySub = fmt.Errorf("already subscribed")
 )
 
 type Session struct {
-	ID      string
-	Client  *telegram.Client
-	Updates *messageUpdatePipe
-	mu      sync.RWMutex
-	ctx     context.Context
-	cancel  context.CancelFunc
+	ID string
+
+	// Messages
+	subscribed bool
+	msgChan    chan *pb.MessageUpdate
+
+	Client *telegram.Client
+
+	mu sync.RWMutex
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func NewSession(client *telegram.Client) *Session {
+func NewSession(appId int, appHash string) *Session {
 	ctx, cancel := context.WithCancel(context.Background())
 	id := uuid.New().String()
-	updates := newMessageUpdatePipe()
-	return &Session{
+	msgChannel := make(chan *pb.MessageUpdate, 50)
+
+	sess := &Session{
 		ID:      id,
-		Client:  client,
-		Updates: updates,
 		ctx:     ctx,
 		cancel:  cancel,
+		msgChan: msgChannel,
 	}
+
+	client := sess.NewDefaultTelegramClient(appId, appHash)
+	sess.Client = client
+
+	return sess
+}
+
+func (s *Session) Stop() {
+	s.cancel()
+	close(s.msgChan)
+}
+
+func (s *Session) GetSub() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.subscribed
+}
+
+func (s *Session) SetSub(val bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subscribed = val
 }
 
 func (s *Session) GetID() string {
@@ -258,6 +290,111 @@ func (s *Session) SendPhoto(peerStr, photoUrl string) (messageID int64, err erro
 	messageID = getMessageId(updates)
 
 	return messageID, nil
+}
+
+func (s *Session) Subscribe(srv pb.TelegramService_SubscribeMessagesServer) (err error) {
+	const op = "Subscribe"
+	log.Println(op, s.ID)
+
+	defer func() {
+		err = e.WrapIfErr(op, err)
+	}()
+
+	if s.GetSub() {
+		return ErrAlreadySub
+	}
+
+	log.Println(op, s.ID, "subscribed")
+	s.SetSub(true)
+	defer func() {
+		log.Println(op, s.ID, "unsubscribed")
+		s.SetSub(false)
+	}()
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			log.Println(op, "sess ctx", e.ErrCtxDone.Error())
+			return e.ErrCtxDone
+		case <-srv.Context().Done():
+			log.Println(op, "req ctx", e.ErrCtxDone.Error())
+			return e.ErrCtxDone
+		case msg := <-s.msgChan:
+			sendErr := srv.Send(msg)
+			if sendErr != nil {
+				return ErrSend
+			}
+		}
+	}
+}
+
+func (s *Session) NewDefaultTelegramClient(appId int, appHash string, opts ...telegram.Options) *telegram.Client {
+	store := &session.StorageMemory{}
+	dispatcher := s.NewMsgUpdatesDispatcher()
+	deviceConf := telegram.DeviceConfig{
+		DeviceModel:   "my app server",
+		SystemVersion: "server v0.1",
+	}
+	return telegram.NewClient(appId, appHash, telegram.Options{
+		SessionStorage: store,
+		Device:         deviceConf,
+		UpdateHandler:  dispatcher,
+	})
+}
+
+func (s *Session) NewMsgUpdatesDispatcher() tg.UpdateDispatcher {
+	dispatcher := tg.NewUpdateDispatcher()
+	dispatcher.OnNewMessage(func(ctx context.Context, entities tg.Entities, update *tg.UpdateNewMessage) error {
+		const op = "Session.UpdateDispatcher"
+		log.Println(op, s.ID)
+
+		select {
+		case <-s.ctx.Done():
+			log.Println(e.ErrCtxDone.Error())
+			return e.ErrCtxDone
+		default:
+			if !s.GetSub() {
+				return nil
+			}
+			// продолжаем
+		}
+
+		msg, ok := update.Message.(*tg.Message)
+		if !ok {
+			log.Println(op, "update.Message convert *tg.Message not ok")
+			return nil
+		}
+
+		if msg.Out {
+			return nil
+		}
+
+		msg.GetFromID()
+		peer, ok := msg.FromID.(*tg.PeerUser)
+		if !ok {
+			log.Println(op, "msg.FromID convert *tg.PeerUser not ok")
+			return nil
+		}
+
+		userFrom, ok := entities.Users[peer.UserID]
+		if !ok {
+			return nil
+		}
+
+		colorlog.Multi(fmt.Sprint(op, "new message"), s.ID, msg, peer, userFrom)
+
+		msgUpdate := &pb.MessageUpdate{
+			MessageId: int64(msg.ID),
+			From:      fmt.Sprintf("%s %s [%s]", userFrom.FirstName, userFrom.LastName, userFrom.Username),
+			Text:      msg.Message,
+			Timestamp: int64(msg.Date),
+		}
+
+		s.msgChan <- msgUpdate
+
+		return nil
+	})
+	return dispatcher
 }
 
 func (s *Session) Run(f func(ctx context.Context) error) error {

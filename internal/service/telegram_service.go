@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
 	"strings"
 	pb "telegram-service/gen/telegram"
 	"telegram-service/internal/colorlog"
+	"telegram-service/internal/e"
 	"telegram-service/internal/session"
 
 	"google.golang.org/grpc/codes"
@@ -146,7 +148,7 @@ func (s *TelegramService) SendPhoto(ctx context.Context, req *pb.SendPhotoReques
 	messageID, err := sess.SendPhoto(peer, photoUrl)
 	if err != nil {
 		log.Println(op, "can't send photo:", err)
-		return nil, status.Errorf(codes.NotFound, "can't send photo")
+		return nil, status.Errorf(codes.Internal, "can't send photo")
 	}
 
 	log.Println(op, "success for:", sess.GetID())
@@ -156,15 +158,21 @@ func (s *TelegramService) SendPhoto(ctx context.Context, req *pb.SendPhotoReques
 
 func (s *TelegramService) SubscribeMessages(req *pb.SubscribeMessagesRequest, srv pb.TelegramService_SubscribeMessagesServer) error {
 	const op = "SubscribeMessages"
-
+	log.Println(op)
 	sess, ok := s.mgr.Get(req.SessionId)
 	if !ok {
 		return status.Error(codes.NotFound, "session not found")
 	}
 
 	log.Printf("%v: %+v\n", op, sess)
-	// TODO: stream from sess.Updates to srv.Send [web:4]
-	return status.Error(codes.Unimplemented, "TODO: bidirectional stream")
+
+	err := sess.Subscribe(srv)
+	if err != nil && !errors.Is(err, e.ErrCtxDone) {
+		log.Println(op, "can't subscribe:", err)
+		return status.Error(codes.Internal, "can't subscribe to messages")
+	}
+
+	return nil
 }
 
 func isURLValid(str string) bool {

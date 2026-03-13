@@ -44,13 +44,7 @@ func (m *Manager) Create(ctx context.Context) (s *Session, err error) {
 		err = e.WrapIfErr(op, err)
 	}()
 
-	client, err := m.NewDefaultTelegramClient()
-	if err != nil {
-		return nil, err
-	}
-
-	s = NewSession(client)
-
+	s = NewSession(m.conf.AppId, m.conf.AppHash)
 	err = s.StartClientSession()
 	if err != nil {
 		return nil, err
@@ -85,8 +79,9 @@ func (m *Manager) Set(s *Session) {
 func (m *Manager) Delete(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.sessions[id]; ok {
+	if s, ok := m.sessions[id]; ok {
 		delete(m.sessions, id)
+		s.Stop()
 		return nil
 	} else {
 		return ErrNoSess
@@ -157,6 +152,6 @@ func (m *Manager) UnaryCheckSessionInterceptor(ctx context.Context, req any, inf
 
 func (m *Manager) StreamCheckSessionInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	md, _ := metadata.FromIncomingContext(ss.Context())
-	colorlog.Multi("stream request params", srv, md, ss, info)
+	colorlog.Multi("stream request params", md, srv, info)
 	return handler(srv, ss)
 }
