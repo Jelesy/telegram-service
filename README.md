@@ -63,3 +63,11 @@ grpcurl -d '{ "peer": "<peer>",
 "session_id": "<session_id>",
 "photo": "<photo_url>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/SendPhoto
 ```
+
+**Отправка фото: SubscribeMessages**
+
+*Подписка на получение входящих сообщений в телеграм*
+
+```cmd
+grpcurl -d '{ "session_id": "<session_id>" }' -plaintext <SERVER_HOST>:<SERVER_PORT> telegram.TelegramService/SubscribeMessages
+```
